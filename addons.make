@@ -1,0 +1,5 @@
+ofxAssimpModelLoader
+ofxOsc
+ofxSyphon
+ofxTktrPerformanceTuning
+ofxTrueTypeFontUL2

@@ -32,3 +32,5 @@ void LiveSendOsc::setTruckClip(int truck, int clip){
      m.addIntArg(clip);
      sender.sendMessage(m);
 }
+
+

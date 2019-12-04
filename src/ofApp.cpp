@@ -6,6 +6,7 @@ void ofApp::setup(){
      ofBackground(255);
 //     ofSetBackgroundAuto(false);
      font20.loadFont("GillSans.ttc", 14);
+     font8.loadFont("GillSans.ttc", 8);
      ofDisableArbTex(); // we need GL_TEXTURE_2D for our models coords.
      ofHideCursor();
      
@@ -24,6 +25,8 @@ void ofApp::setup(){
      polyLight.setSpecularColor( ofFloatColor(1.f, 1.f, 1.f));
      
      polyLight.setPosition(0, 0, 800);
+     
+     liveC.setup();
 }
 
 //--------------------------------------------------------------
@@ -47,6 +50,8 @@ void ofApp::update(){
      }else{
            polyLight.setPosition(0, 0, 800);
      }
+     
+     liveC.update();
 }
 
 //--------------------------------------------------------------
@@ -86,31 +91,41 @@ void ofApp::draw(){
      }
      TS_STOP("model");
      
+     
+     //箱が動く部分
+     TS_START("MoveBox");
      if(polylineBrush[1].polyline.size()>0){
-//          for(auto sb : setButton){
-//               ofNoFill();
-//               ofDrawRectangle(sb);
-//               ofFill();
-//          }
-          for(int i=0; i<motionBox.size(); i++){
+          for(auto sb : setButton){
+               ofNoFill();
+               ofDrawRectangle(sb);
+               ofFill();
+          }
+          
+          for(int i=0; i<pp.size(); i++){
                float speedRate = 0.5;
                if(isMoveMotionBox[i]){
+                    //moveBoxのxy座標の決定
                     pp[i].x = pp[i].x + (polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].x - polylineBrush[1].polyline[i].getVertices()[positionNum[i]].x)*speedRate;
                     pp[i].y = pp[i].y + (polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].y - polylineBrush[1].polyline[i].getVertices()[positionNum[i]].y)*speedRate;
-                    
-                    if(abs(pp[i].x -  polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].x) < 0.1 && abs(pp[i].y -  polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].y) < 0.1){
+                    //
+                    float thureshold = 0.2;
+                    if(abs(pp[i].x -  polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].x) < thureshold && abs(pp[i].y -  polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].y) < thureshold){
                          positionNum[i]++;
                          pp[i].x = polylineBrush[1].polyline[i].getVertices()[positionNum[i]].x;
                          pp[i].y = polylineBrush[1].polyline[i].getVertices()[positionNum[i]].y;
-                         
+
                     }
                     setButton[i].setPosition(pp[i]);
                     motionBox[i].setPosition(pp[i]);
-//                    positionNum[i]+=0.5;
+//                    positionNum[i] += 1.0;
                     if(positionNum[i] > polylineBrush[1].polyline[i].size()-2){
+                         isMoveMotionBox[i] = false;
                          positionNum[i] = 0;
                          pp[i].set(polylineBrush[1].polyline[i].getVertices()[positionNum[i]]);
                     }
+               }
+               if(strMove[i]){
+                    isMoveMotionBox[i] = true;
                }
                ofSetColor(255, 220, 220);
                ofSetRectMode(OF_RECTMODE_CENTER);
@@ -119,8 +134,15 @@ void ofApp::draw(){
                ofFill();
                ofSetRectMode(OF_RECTMODE_CORNER);
                motionBox[i].draw();
+               
+               if(liveC.beat%8 == 0){
+                    strMove[i] = true;
+               }else{
+                    strMove[i] = false;
+               }
           }
      }
+     TS_STOP("MoveBox");
      //箱書くやつ
      for(int i=0; i<soundNum; i++){
           ofSetColor(220);
@@ -134,6 +156,20 @@ void ofApp::draw(){
      ofDisableLighting();
      ofDisableLighting();
      polyLight.disable();
+     
+     ofSetColor(100);
+     ofDrawLine(w*0.97, h*0.1, w*0.97, h*0.35);
+     font20.drawString("speed", w*0.97, h*0.09, 0, 0, UL2_TEXT_ALIGN_CENTER);
+     
+     for(int i=0; i<8; i++){
+          i == liveC.beat%8 ? ofSetColor(100, 0, 0) : ofSetColor(200);
+          ofDrawRectangle(w*0.02*(1 + i*1.5), h*0.955, w*0.016, w*0.016);
+     }
+     
+     if(isDebug){
+          ofSetColor(10);
+          liveC.drawDebug();
+     }
      
      ofSetColor(40);
      std::stringstream time;
@@ -163,7 +199,9 @@ void ofApp::draw(){
      ofDrawRectangle(w*whValue, h*whValue, w*(1-whValue*2), h*(1-whValue*2));
      ofFill();
      
+     TS_START("Syphon");
      server.publishScreen();
+     TS_STOP("Syphon");
 }
 
 //--------------------------------------------------------------
@@ -180,12 +218,26 @@ void ofApp::keyPressed(int key){
           case 13:
                if(tool == 0){
                     polylineBrush[mode].toRedo();
-                    if(mode == 1 && polylineBrush[mode].polyline.size()>0){
-                         setButton.pop_back();
-                         motionBox.pop_back();
-                         isMoveMotionBox.pop_back();
-                         positionNum.pop_back();
-                         pp.pop_back();
+                    if(mode == 1){
+                         if(polylineBrush[mode].polyline.size()>0){
+                              cout << "side > 0" << endl;
+                              setButton.pop_back();
+                              motionBox.pop_back();
+                              isMoveMotionBox.pop_back();
+                              positionNum.pop_back();
+                              pp.pop_back();
+                              strMove.pop_back();
+                              speedRate.pop_back();
+                         }else{
+                              cout << "side = 0" << endl;
+                              setButton.clear();
+                              motionBox.clear();
+                              isMoveMotionBox.clear();
+                              positionNum.clear();
+                              pp.clear();
+                              strMove.clear();
+                              speedRate.clear();
+                         }
                     }
                }else if(tool == 1){
                     boxMake.reDo(kind);
@@ -229,6 +281,9 @@ void ofApp::keyPressed(int key){
      if(key == 'z'){
           boxMake.liveSendOsc.setTruckClip(4,2);
      }
+     if(key == 'd'){
+          isDebug = !isDebug;
+     }
 
 }
 
@@ -263,9 +318,9 @@ void ofApp::mousePressed(int x, int y, int button){
                     mbb.set(mbSize, mbSize, mbSize);
                     mbb.setPosition(x, y, 0);
                     motionBox.push_back(mbb);
-                    bool isMMB;
-                    isMoveMotionBox.push_back(isMMB);
                     positionNum.push_back(0);
+                    strMove.push_back(true);
+                    speedRate.push_back(0.5);
                }
           }
           else if(tool == 1){
@@ -282,15 +337,18 @@ void ofApp::mouseReleased(int x, int y, int button){
           if(x ==  setButton.back().x){
                setButton.pop_back();
                motionBox.pop_back();
-               isMoveMotionBox.pop_back();
+//               isMoveMotionBox.pop_back();
                positionNum.pop_back();
                polylineBrush[mode].toRedo();
+               strMove.pop_back();
+               speedRate.pop_back();
           }else{
-               isMoveMotionBox.back() = true;
+//               isMoveMotionBox.back() = true;
                ofVec2f prepp;
                prepp.x = polylineBrush[1].polyline.back().getVertices()[0].x;
                prepp.y = polylineBrush[1].polyline.back().getVertices()[0].y;
                pp.push_back(prepp);
+               isMoveMotionBox.push_back(true);
           }
      }
 

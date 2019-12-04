@@ -7,6 +7,7 @@
 #include "boxMake.hpp"
 #include "polylineBrush.hpp"
 
+#include "liveClientOsc.hpp"
 #include "ofxTktrPerformanceTuning.h"
 
 //#define soundNum 13
@@ -34,6 +35,7 @@ class ofApp : public ofBaseApp{
      float h;
      vector<ofVec2f> lines;
      ofxTrueTypeFontUL2 font20;
+      ofxTrueTypeFontUL2 font8;
      int page;
      int mode;
      int tool;
@@ -63,5 +65,11 @@ class ofApp : public ofBaseApp{
      bool bMoveCam;
      float phase;
      float radius = 1200;
+     
+     LiveClientOsc liveC;
+     bool isDebug;
+     vector<bool> strMove;
+     int loopVer[4] = {4, 8, 12, 16};
+     vector<float> speedRate;
      
 };

@@ -28,6 +28,8 @@ class BoxMake{
      
      void plusModel(int x, int y, int kind);
      void reDo(int kind);
+     void drawSingle(int x, int y, int kind);
+     void soundtruck(int kind);
      
      vector<vector<ofBoxPrimitive>> boxes;
      
@@ -48,5 +50,7 @@ class BoxMake{
      
      int sNum = soundNum;
      vector<ofxAssimpModelLoader> loadModel;
+     
+     vector<bool> isPlayClip;
      
 };

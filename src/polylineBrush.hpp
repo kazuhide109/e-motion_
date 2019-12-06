@@ -26,5 +26,6 @@ public:
      vector<ofPolyline> polyline;
      
      void toRedo();
+     void erase(int num);
      
 };

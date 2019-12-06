@@ -18,6 +18,7 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
+     void exit();
 
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -71,5 +72,17 @@ class ofApp : public ofBaseApp{
      vector<bool> strMove;
      int loopVer[4] = {4, 8, 12, 16};
      vector<float> speedRate;
+     vector<ofRectangle> rateBox;
+     
+     void eraseMoveBox(int num);
+     
+     ofRectangle playAreaRect;
+     bool isChngeZoomOnece;
+     ofRectangle sSelectBtm;
+     bool isSoundSelect;
+     vector<ofRectangle> buttonRect;
+     bool inButton = false;
+     
+     ofFbo outFbo;
      
 };

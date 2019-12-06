@@ -27,6 +27,8 @@ void ofApp::setup(){
      polyLight.setPosition(0, 0, 800);
      
      liveC.setup();
+     outFbo.allocate(1920, 1080, GL_RGB);
+     
 }
 
 //--------------------------------------------------------------
@@ -35,14 +37,40 @@ void ofApp::update(){
      w = ofGetWidth();
      h = ofGetHeight();
      
+     float whValue = 0.05;
+     playAreaRect.set(w*whValue, h*whValue, w*(1-whValue*2), h*(1-whValue*2));
+     
      TS_START("REACT");
-     if(polylineBrush[1].polyline.size()>0){
-          for(int i=0; i<polylineBrush[1].polyline.size(); i++){
-               for(int j=0; j<boxMake.sNum; j++){
-                    boxMake.update(j, setButton[i]);
+//     if(polylineBrush[1].polyline.size()>0){
+//          for(int i=0; i<polylineBrush[1].polyline.size(); i++){
+//               for(int j=0; j<boxMake.sNum; j++){
+//                    boxMake.update(j, setButton[i]);
+//               }
+//          }
+//     }
+          for(int i=0; i<pp.size(); i++){
+               
+               for(int j=0; j<13; j++){
+                    if(j<3){
+                         for(int k=0; k<boxMake.boxes[j].size(); k++){
+                              if(setButton[i].inside(boxMake.boxes[j][k].getPosition())){
+                                   boxMake.soundtruck(j);
+                                   cout << "SS_1" << endl;
+                              }
+                         }
+                    }
+                    else{
+                         for(int k=0; k<boxMake.model[j-3].size(); k++){
+                              if(setButton[i].inside(boxMake.model[j-3][k].getPosition())){
+                                   boxMake.soundtruck(j);
+                                   cout << "SS_2" << endl;
+                              }
+                         }
+                    }
+                    
                }
+          
           }
-     }
      TS_STOP("REACT");
      
      if(isCam){
@@ -57,12 +85,18 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
      
+     if(liveC.beat%8 != 0) isChngeZoomOnece = true;
+     
+     
      if(isCam){
           cam.enableMouseInput();
           cam.begin();
           if(bMoveCam){
                phase+=0.01;
-               if(ofGetFrameNum()%240 == 0) radius = ofRandom(300, -1400);
+               if(liveC.beat%8 == 0 && isChngeZoomOnece){
+                    radius = ofRandom(300, -1400);
+                    isChngeZoomOnece = false;
+               }
                cam.setPosition(cos(phase)*radius, sin(phase)*radius, -200);
                cam.lookAt(ofVec3f(0, 0, 0), ofVec3f(0, 0, -1));
           }
@@ -78,6 +112,9 @@ void ofApp::draw(){
 #endif
      ofEnableLighting();
      polyLight.enable();
+     
+//     outFbo.begin();
+//     ofClear(0);
      
      if(isCam){
           ofTranslate(-w/2, -h/2);
@@ -95,20 +132,15 @@ void ofApp::draw(){
      //箱が動く部分
      TS_START("MoveBox");
      if(polylineBrush[1].polyline.size()>0){
-          for(auto sb : setButton){
-               ofNoFill();
-               ofDrawRectangle(sb);
-               ofFill();
-          }
           
           for(int i=0; i<pp.size(); i++){
-               float speedRate = 0.5;
+//               float speedRate = 0.5;
                if(isMoveMotionBox[i]){
                     //moveBoxのxy座標の決定
-                    pp[i].x = pp[i].x + (polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].x - polylineBrush[1].polyline[i].getVertices()[positionNum[i]].x)*speedRate;
-                    pp[i].y = pp[i].y + (polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].y - polylineBrush[1].polyline[i].getVertices()[positionNum[i]].y)*speedRate;
+                    pp[i].x = pp[i].x + (polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].x - polylineBrush[1].polyline[i].getVertices()[positionNum[i]].x)*speedRate[i];
+                    pp[i].y = pp[i].y + (polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].y - polylineBrush[1].polyline[i].getVertices()[positionNum[i]].y)*speedRate[i];
                     //
-                    float thureshold = 0.2;
+                    float thureshold = 1;
                     if(abs(pp[i].x -  polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].x) < thureshold && abs(pp[i].y -  polylineBrush[1].polyline[i].getVertices()[positionNum[i]+1].y) < thureshold){
                          positionNum[i]++;
                          pp[i].x = polylineBrush[1].polyline[i].getVertices()[positionNum[i]].x;
@@ -127,9 +159,12 @@ void ofApp::draw(){
                if(strMove[i]){
                     isMoveMotionBox[i] = true;
                }
-               ofSetColor(255, 220, 220);
                ofSetRectMode(OF_RECTMODE_CENTER);
+               isMoveMotionBox[i] ? ofSetColor(200, 200, 50) :  ofSetColor(200);
+               ofDrawRectangle(buttonRect[i]);
                ofNoFill();
+               ofSetColor(255, 220, 220);
+               ofDrawRectangle(buttonRect[i]);
                ofDrawRectangle(setButton[i]);
                ofFill();
                ofSetRectMode(OF_RECTMODE_CORNER);
@@ -149,28 +184,64 @@ void ofApp::draw(){
           boxMake.draw(i, isCam);
      }
      
+//     outFbo.end();
+//     outFbo.draw(0,0);
+     
      if(isCam)
      cam.end();
      
+     //select
+     if(isSoundSelect){
+          ofSetColor(255, 200);
+          ofBoxPrimitive box;
+          box.setPosition(w*0.5, h*0.5, 0);
+          box.set(w*0.5, w*0.5, w*0.01);
+          box.draw();
+          ofSetColor(255);
+          boxMake.drawSingle(w*0.5, h*0.525, kind);
+     }
+     
+     ofDisableLighting();
      ofDisableDepthTest();
-     ofDisableLighting();
-     ofDisableLighting();
      polyLight.disable();
      
+     //Speed Control
      ofSetColor(100);
      ofDrawLine(w*0.97, h*0.1, w*0.97, h*0.35);
      font20.drawString("speed", w*0.97, h*0.09, 0, 0, UL2_TEXT_ALIGN_CENTER);
+     if(pp.size()>0){
+          ofDrawRectangle(rateBox[pp.size()-1]);
+     }
      
+     //Vers
+     ofSetColor(100);
+     font20.drawString("Vers", w*0.97, h*0.49, 0, 0, UL2_TEXT_ALIGN_CENTER);
+     ofSetColor(220);
+     for(int j=0; j<4; j++){
+          ofDrawRectangle(w*0.96, h*0.5 + j*w*0.04, w*0.02, w*0.02);
+     }
+     
+     //Sound Select Button
+     ofSetColor(230);
+     sSelectBtm.set(w*0.015, h*0.85, w*0.03, w*0.03);
+     ofDrawRectangle(sSelectBtm);
+     ofNoFill();
+     isSoundSelect ? ofSetColor(200, 0, 0) : ofSetColor(20);
+     ofDrawRectangle(sSelectBtm);
+     ofFill();
+     font20.drawString("select", w*0.03, h*0.84, 0, 0, UL2_TEXT_ALIGN_CENTER);
+     
+     //BPM
      for(int i=0; i<8; i++){
           i == liveC.beat%8 ? ofSetColor(100, 0, 0) : ofSetColor(200);
           ofDrawRectangle(w*0.02*(1 + i*1.5), h*0.955, w*0.016, w*0.016);
      }
-     
      if(isDebug){
           ofSetColor(10);
           liveC.drawDebug();
      }
      
+     //TEXT STATUS
      ofSetColor(40);
      std::stringstream time;
      time << "Elapsed Time:  ";
@@ -193,15 +264,56 @@ void ofApp::draw(){
      ofDrawCircle(mouseX, mouseY, polylineBrush[mode].brushSize);
      ofSetLineWidth(2);
      ofSetColor(60);
-     float whValue = 0.05;
+     float whValue = 0.01;
      ofDrawRectangle(w*whValue, h*whValue, w*(1-whValue*2), h*(1-whValue*2));
-     whValue = 0.01;
-     ofDrawRectangle(w*whValue, h*whValue, w*(1-whValue*2), h*(1-whValue*2));
+     ofDrawRectangle(playAreaRect);
      ofFill();
      
      TS_START("Syphon");
+//     server.publishTexture(&outFbo.getTexture());
      server.publishScreen();
      TS_STOP("Syphon");
+}
+
+void ofApp::eraseMoveBox(int num){
+     if(polylineBrush[mode].polyline.size()>0 && num == pp.size()){
+          cout << "side > 0" << endl;
+          setButton.pop_back();
+          motionBox.pop_back();
+          isMoveMotionBox.pop_back();
+          positionNum.pop_back();
+          pp.pop_back();
+          strMove.pop_back();
+          speedRate.pop_back();
+          rateBox.pop_back();
+          buttonRect.pop_back();
+     }else if(polylineBrush[mode].polyline.size()>0 && num != pp.size()){
+          setButton.erase(setButton.begin() + num);
+          motionBox.erase(motionBox.begin() + num);
+          isMoveMotionBox.erase(isMoveMotionBox.begin() + num);
+          positionNum.erase(positionNum.begin() + num);
+          pp.erase(pp.begin() + num);
+          strMove.erase(strMove.begin() + num);
+          speedRate.erase(speedRate.begin() + num);
+          rateBox.erase(rateBox.begin() + num);
+          buttonRect.erase(buttonRect.begin() + num);
+          cout << "erase, " << "size: " << pp.size() << endl;
+     }else{
+          cout << "side = 0" << endl;
+          setButton.clear();
+          motionBox.clear();
+          isMoveMotionBox.clear();
+          positionNum.clear();
+          pp.clear();
+          strMove.clear();
+          speedRate.clear();
+          rateBox.clear();
+          buttonRect.clear();
+     }
+}
+
+void ofApp::exit(){
+     boxMake.liveSendOsc.setStop();
 }
 
 //--------------------------------------------------------------
@@ -219,25 +331,7 @@ void ofApp::keyPressed(int key){
                if(tool == 0){
                     polylineBrush[mode].toRedo();
                     if(mode == 1){
-                         if(polylineBrush[mode].polyline.size()>0){
-                              cout << "side > 0" << endl;
-                              setButton.pop_back();
-                              motionBox.pop_back();
-                              isMoveMotionBox.pop_back();
-                              positionNum.pop_back();
-                              pp.pop_back();
-                              strMove.pop_back();
-                              speedRate.pop_back();
-                         }else{
-                              cout << "side = 0" << endl;
-                              setButton.clear();
-                              motionBox.clear();
-                              isMoveMotionBox.clear();
-                              positionNum.clear();
-                              pp.clear();
-                              strMove.clear();
-                              speedRate.clear();
-                         }
+                         eraseMoveBox(pp.size());
                     }
                }else if(tool == 1){
                     boxMake.reDo(kind);
@@ -256,10 +350,12 @@ void ofApp::keyPressed(int key){
           case OF_KEY_LEFT:
                if(kind < soundNum-1)
                kind++;
+               boxMake.soundtruck(kind);
                break;
           case OF_KEY_RIGHT:
                if(kind > 0)
                kind--;
+               boxMake.soundtruck(kind);
                break;
           case ' ':
                isCam = !isCam;
@@ -300,32 +396,68 @@ void ofApp::mouseMoved(int x, int y ){
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
      
-     if(tool == 0 && !isCam)polylineBrush[mode].mouseDragged(x, y, button);
+     if(rateBox.size() > 0){
+          int num = rateBox.size()-1;
+          if(rateBox[num].inside(x, y)){
+               isMoveMotionBox[num] = false;
+               float setY;
+               setY = y > h*0.35 ? h*0.35 : (setY = y < h*0.1 ? h*0.1 : y);
+               rateBox[num].setY(setY - rateBox[num].getWidth()/2);
+               int sr = ofMap(setY, h*0.1, h*0.35, 1.0, 5.0);
+               speedRate[num] = 1.0 / float(sr);
+               cout << "rate: " << speedRate[num] << endl;
+          }
+     }
+     
+     if(!isCam && playAreaRect.inside(x, y)){
+           if(tool == 0)polylineBrush[mode].mouseDragged(x, y, button);
+     }
+     
+     
+     
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-     if(!isCam){
-          if(tool == 0){
-               polylineBrush[mode].mousePressed(x, y, button);
-               if(mode == 1){
-                    ofRectangle bb;
-                    float bbSize = w*0.02;
-                    bb.set(x, y, bbSize, bbSize);
-                    setButton.push_back(bb);
-                    ofBoxPrimitive mbb;
-                    float mbSize = w*0.012;
-                    mbb.set(mbSize, mbSize, mbSize);
-                    mbb.setPosition(x, y, 0);
-                    motionBox.push_back(mbb);
-                    positionNum.push_back(0);
-                    strMove.push_back(true);
-                    speedRate.push_back(0.5);
+     if(!isCam && playAreaRect.inside(x, y)){
+
+          for(int i=0; i<buttonRect.size(); i++){
+               if(buttonRect[i].inside(x, y)){
+                    cout << "press" << endl;
+                    eraseMoveBox(i);
+                    polylineBrush[mode].erase(i);
+                    inButton = true;
                }
           }
-          else if(tool == 1){
-               boxMake.plusModel(x, y, kind);
+          if(!inButton){
+               if(tool == 0){
+                    polylineBrush[mode].mousePressed(x, y, button);
+                    if(mode == 1){
+                         ofRectangle bb;
+                         float bbSize = w*0.02;
+                         bb.set(x, y, bbSize, bbSize);
+                         setButton.push_back(bb);
+                         ofBoxPrimitive mbb;
+                         float mbSize = w*0.012;
+                         mbb.set(mbSize, mbSize, mbSize);
+                         mbb.setPosition(x, y, 0);
+                         motionBox.push_back(mbb);
+                         positionNum.push_back(0);
+                         strMove.push_back(true);
+                         speedRate.push_back(0.5);
+                         ofRectangle rateB;
+                         rateB.set(w*0.96, h*0.225-w*0.01, w*0.02, w*0.02);
+                         rateBox.push_back(rateB);
+                    }
+               }
+               else if(tool == 1){
+                    boxMake.plusModel(x, y, kind);
+               }
           }
+     }
+     
+     if(sSelectBtm.inside(x, y)){
+          isSoundSelect = !isSoundSelect;
      }
      
 }
@@ -333,24 +465,38 @@ void ofApp::mousePressed(int x, int y, int button){
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
      
-     if(mode == 1 && tool == 0){
-          if(x ==  setButton.back().x){
-               setButton.pop_back();
-               motionBox.pop_back();
-//               isMoveMotionBox.pop_back();
-               positionNum.pop_back();
-               polylineBrush[mode].toRedo();
-               strMove.pop_back();
-               speedRate.pop_back();
-          }else{
-//               isMoveMotionBox.back() = true;
-               ofVec2f prepp;
-               prepp.x = polylineBrush[1].polyline.back().getVertices()[0].x;
-               prepp.y = polylineBrush[1].polyline.back().getVertices()[0].y;
-               pp.push_back(prepp);
-               isMoveMotionBox.push_back(true);
+      if(!isCam && playAreaRect.inside(x, y)){
+           if(mode == 1 && tool == 0 && !inButton){
+//                if(x ==  setButton.back().x){
+//                     eraseMoveBox(pp.size());
+//                }else{
+                ofVec2f prepp;
+                ofRectangle br;
+                if( polylineBrush[1].polyline.back().size() > 0){
+                     prepp.x = polylineBrush[1].polyline.back().getVertices()[0].x;
+                     prepp.y = polylineBrush[1].polyline.back().getVertices()[0].y;
+                     br.set(polylineBrush[1].polyline[pp.size()].getVertices()[0], w*0.01, w*0.01);
+                }
+                     pp.push_back(prepp);
+                     isMoveMotionBox.push_back(true);
+                     buttonRect.push_back(br);
+//                }
+                 if(x ==  setButton.back().x){
+                      eraseMoveBox(pp.size());
+                      polylineBrush[mode].toRedo();
+                 }
+           }
+      }
+     
+     if(rateBox.size() > 0){
+          int num = rateBox.size()-1;
+          if(rateBox[num].inside(x, y)){
+               isMoveMotionBox[num] = true;
+               pp[num].set(polylineBrush[1].polyline[num].getVertices()[positionNum[num]]);
           }
      }
+     
+     inButton = false;
 
 }
 

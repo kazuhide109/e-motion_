@@ -43,3 +43,7 @@ void PolylineBrush::toRedo(){
           polyline.pop_back();
      }
 }
+
+void PolylineBrush::erase(int num){
+     polyline.erase(polyline.begin() + num);
+}
